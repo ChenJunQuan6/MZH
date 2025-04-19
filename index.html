@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>预约系统</title>
+    <link rel="stylesheet" href="https://unpkg.com/element-plus/dist/index.css">
+    <style>
+        .container { max-width: 800px; margin: 20px auto; padding: 20px; }
+        .card { margin-bottom: 20px; padding: 20px; border-radius: 8px; box-shadow: 0 2px 12px rgba(0,0,0,0.1); }
+        .time-options { display: flex; gap: 10px; flex-wrap: wrap; }
+        .time-option { 
+            padding: 8px 15px;
+            border: 1px solid #ebeef5;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        .time-option.selected { background: #409eff; color: white; }
+        .custom-time { margin-top: 15px; }
+    </style>
+</head>
+<body>
+    <div id="app">
+        <div class="container">
+            <!-- 服务选择 -->
+            <el-card class="card">
+                <h2>选择服务项目</h2>
+                <el-select v-model="selectedService" placeholder="请选择服务">
+                    <el-option
+                        v-for="service in services"
+                        :key="service.id"
+                        :label="service.name"
+                        :value="service.id"
+                    />
+                </el-select>
+            </el-card>
+
+            <!-- 灵活时间选择 -->
+            <el-card class="card">
+                <h2>选择预约方式</h2>
+                <el-radio-group v-model="timeType">
+                    <el-radio label="specific">指定具体时间</el-radio>
+                    <el-radio label="range">时间范围</el-radio>
+                    <el-radio label="flexible">时间待定</el-radio>
+                </el-radio-group>
+
+                <!-- 具体时间选择 -->
+                <div v-if="timeType === 'specific'" class="specific-time">
+                    <el-date-picker
+                        v-model="specificDate"
+                        type="date"
+                        placeholder="选择日期"
+                        :disabled-date="disabledPastDate"
+                    />
+                    <el-time-select
+                        v-model="specificTime"
+                        :min-time="minTime"
+                        :max-time="maxTime"
+                        placeholder="选择时间"
+                    />
+                </div>
+
+                <!-- 时间范围选择 -->
+                <div v-if="timeType === 'range'" class="time-range">
+                    <el-date-picker
+                        v-model="dateRange"
+                        type="daterange"
+                        range-separator="至"
+                        start-placeholder="开始日期"
+                        end-placeholder="结束日期"
+                    />
+                    <div class="time-options">
+                        <div 
+                            v-for="time in timeSlots"
+                            :key="time"
+                            class="time-option"
+                            :class="{ selected: selectedSlots.includes(time) }"
+                            @click="toggleTimeSlot(time)"
+                        >
+                            {{ time }}
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 时间待定 -->
+                <div v-if="timeType === 'flexible'" class="custom-time">
+                    <el-input
+                        v-model="customTimeDesc"
+                        type="textarea"
+                        :rows="3"
+                        placeholder="请描述您方便的时间段（例如：工作日晚上或周末上午）"
+                    />
+                </div>
+            </el-card>
+
+            <!-- 提交表单 -->
+            <el-card class="card">
+                <el-form label-width="80px">
+                    <el-form-item label="姓名">
+                        <el-input v-model="form.name" />
+                    </el-form-item>
+                    <el-form-item label="联系电话">
+                        <el-input v-model="form.phone" />
+                    </el-form-item>
+                    <el-button type="primary" @click="submit">提交预约申请</el-button>
+                </el-form>
+            </el-card>
+        </div>
+    </div>
+
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <script src="https://unpkg.com/element-plus/dist/index.full.js"></script>
+    <script>
+        const { createApp } = Vue
+        createApp({
+            data() {
+                return {
+                    services: [
+                        { id: 1, name: '经典面部护理' },
+                        { id: 2, name: '全身舒缓SPA' },
+                        { id: 3, name: '美甲艺术设计' }
+                    ],
+                    selectedService: null,
+                    timeType: 'specific',
+                    // 具体时间
+                    specificDate: '',
+                    specificTime: '',
+                    // 时间范围
+                    dateRange: [],
+                    selectedSlots: [],
+                    timeSlots: ['09:00', '10:00', '14:00', '15:00', '16:00'],
+                    // 灵活时间
+                    customTimeDesc: '',
+                    form: {
+                        name: '',
+                        phone: ''
+                    },
+                    minTime: '09:00',
+                    maxTime: '20:00'
+                }
+            },
+            methods: {
+                disabledPastDate(date) {
+                    return date < new Date().setHours(0,0,0,0)
+                },
+                toggleTimeSlot(time) {
+                    const index = this.selectedSlots.indexOf(time)
+                    if (index > -1) {
+                        this.selectedSlots.splice(index, 1)
+                    } else {
+                        this.selectedSlots.push(time)
+                    }
+                },
+                validateForm() {
+                    if (!this.selectedService) {
+                        alert('请选择服务项目')
+                        return false
+                    }
+                    if (this.timeType === 'specific' && (!this.specificDate || !this.specificTime)) {
+                        alert('请选择具体时间')
+                        return false
+                    }
+                    if (this.timeType === 'range' && this.selectedSlots.length === 0) {
+                        alert('请至少选择一个时间段')
+                        return false
+                    }
+                    if (this.timeType === 'flexible' && !this.customTimeDesc) {
+                        alert('请描述您方便的时间')
+                        return false
+                    }
+                    if (!this.form.name || !this.form.phone) {
+                        alert('请填写姓名和联系电话')
+                        return false
+                    }
+                    return true
+                },
+                submit() {
+                    if (!this.validateForm()) return
+                    
+                    const bookingData = {
+                        service: this.selectedService,
+                        timeType: this.timeType,
+                        timeInfo: this.getTimeInfo(),
+                        customerInfo: { ...this.form }
+                    }
+                    
+                    alert('预约申请已提交！\n' + JSON.stringify(bookingData, null, 2))
+                    this.resetForm()
+                },
+                getTimeInfo() {
+                    switch(this.timeType) {
+                        case 'specific':
+                            return `${this.specificDate} ${this.specificTime}`
+                        case 'range':
+                            return {
+                                dateRange: this.dateRange,
+                                slots: this.selectedSlots
+                            }
+                        case 'flexible':
+                            return this.customTimeDesc
+                    }
+                },
+                resetForm() {
+                    this.selectedService = null
+                    this.timeType = 'specific'
+                    this.specificDate = ''
+                    this.specificTime = ''
+                    this.dateRange = []
+                    this.selectedSlots = []
+                    this.customTimeDesc = ''
+                    this.form = { name: '', phone: '' }
+                }
+            }
+        }).use(ElementPlus).mount('#app')
+    </script>
+</body>
+</html>
